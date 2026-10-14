@@ -7,27 +7,30 @@ import sys
 
 import os
 
-parser = argparse.ArgumentParser(description='Предобработка видео перед детекцией')
+def mp4_path(path):
+    if os.path.splitext(path)[1].lower() != '.mp4':
+        raise argparse.ArgumentTypeError('Поддерживаются только файлы MP4')
+    return path
 
-parser.add_argument(
-    '--input_file_path',
-    type=str,
-    required=True,
-    help='Путь к входному файлу',
-)
 
-parser.add_argument(
-    '--fps_verbose', action='store_true', help='Показать счетчик кадров'
-)
-
-parser.add_argument(
-    '--output_path',
-    type=str,
-    default='../data',
-    help='Путь к папке, куда сохранить результат',
-)
-
-args = parser.parse_args()
+def build_parser():
+    parser = argparse.ArgumentParser(description='Предобработка видео перед детекцией')
+    parser.add_argument(
+        '--input_file_path',
+        type=mp4_path,
+        required=True,
+        help='Путь к входному файлу MP4',
+    )
+    parser.add_argument(
+        '--fps_verbose', action='store_true', help='Показать счетчик кадров'
+    )
+    parser.add_argument(
+        '--output_path',
+        type=str,
+        default='../data',
+        help='Путь к папке, куда сохранить результат',
+    )
+    return parser
 
 
 def check_paths(input_path, output_dir):
@@ -110,9 +113,11 @@ def get_video_info(video_path):
     print('Аудио:', has_audio)
 
 
-def processe_video(input_video_path, output_video_path):
+def processe_video(input_video_path, output_video_path, fps_verbose=False):
 
-    base_file_name = 'processed_base_' + os.path.basename(input_video_path)
+    base_file_name = 'processed_base_' + os.path.splitext(
+        os.path.basename(input_video_path)
+    )[0] + '.mp4'
     output_video_path = os.path.join(output_video_path, base_file_name)
 
     capture = cv2.VideoCapture(input_video_path)
@@ -140,7 +145,7 @@ def processe_video(input_video_path, output_video_path):
                 break
 
             frame_number += 1
-            if args.fps_verbose:
+            if fps_verbose:
                 cv2.putText(
                     frame,
                     f'Frame: {frame_number}',
@@ -160,13 +165,14 @@ def processe_video(input_video_path, output_video_path):
     print(f'Обработано кадров: {frame_number}')
 
 
-def main():
+def main(argv=None):
+    args = build_parser().parse_args(argv)
     if not check_paths(args.input_file_path, args.output_path):
         sys.exit(1)
 
     try:
         get_video_info(args.input_file_path)
-        processe_video(args.input_file_path, args.output_path)
+        processe_video(args.input_file_path, args.output_path, args.fps_verbose)
     except Exception as error:
         raise error
 
